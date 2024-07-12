@@ -1,8 +1,11 @@
 package dev.ftb.mods.ftblh;
 
+import dev.ftb.mods.ftblh.entity.LittleHelperEntity;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import net.minecraft.world.entity.player.Player;
 
+import java.util.Optional;
 import java.util.UUID;
 
 public enum HelperTracker {
@@ -21,5 +24,21 @@ public enum HelperTracker {
 
     public int getHelperId(UUID uuid) {
         return knownHelpers.getOrDefault(uuid, 0);
+    }
+
+    public boolean isRegistered(UUID uuid) {
+        return knownHelpers.containsKey(uuid);
+    }
+
+    public void clear() {
+        knownHelpers.clear();
+    }
+
+    public Optional<LittleHelperEntity> getActiveHelper(Player player) {
+       int id = getHelperId(player.getUUID());
+       if (id != 0 && player.level().getEntity(id) instanceof LittleHelperEntity lh) {
+           return Optional.of(lh);
+       }
+       return Optional.empty();
     }
 }

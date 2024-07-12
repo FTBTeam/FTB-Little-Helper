@@ -1,8 +1,8 @@
 package dev.ftb.mods.ftblh.client.render;
 
-import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import dev.ftb.mods.ftblh.FTBLittleHelper;
 import dev.ftb.mods.ftblh.entity.LittleHelperEntity;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
@@ -23,8 +23,8 @@ import java.util.function.BiConsumer;
 import static net.minecraft.client.renderer.LightTexture.FULL_BRIGHT;
 
 public class LittleHelperRenderer extends MobRenderer<LittleHelperEntity,LittleHelperModel> {
-    // using the allay model for now
-    private static final ResourceLocation HELPER_TEXTURE = new ResourceLocation("textures/entity/allay/allay.png");
+    // using a retextured allay model
+    private static final ResourceLocation HELPER_TEXTURE = new ResourceLocation(FTBLittleHelper.MOD_ID, "textures/entity/little_helper.png");
 
     public LittleHelperRenderer(EntityRendererProvider.Context context) {
         super(context, new LittleHelperModel(context.bakeLayer(ModelLayers.ALLAY)), 0.4f);
@@ -87,16 +87,7 @@ public class LittleHelperRenderer extends MobRenderer<LittleHelperEntity,LittleH
     }
 
     public static void renderWithTypeAndFinish(PoseStack matrixStack, MultiBufferSource buffer, RenderType type, BiConsumer<Matrix4f, VertexConsumer> consumer) {
-        // use when drawing from RenderWorldLastEvent
         consumer.accept(matrixStack.last().pose(), buffer.getBuffer(type));
-//        finishBuffer(buffer, type);
-    }
-
-    public static void finishBuffer(MultiBufferSource buffer, RenderType type) {
-        if (buffer instanceof MultiBufferSource.BufferSource mbs) {
-            RenderSystem.disableDepthTest();
-            mbs.endBatch(type);
-        }
     }
 
     @Override

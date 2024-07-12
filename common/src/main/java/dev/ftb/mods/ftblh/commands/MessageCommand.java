@@ -7,6 +7,7 @@ import dev.ftb.mods.ftblh.HelperTracker;
 import dev.ftb.mods.ftblh.entity.LittleHelperEntity;
 import dev.ftb.mods.ftblh.registry.ModEntityTypes;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.ComponentArgument;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.nbt.CompoundTag;
@@ -23,7 +24,7 @@ public class MessageCommand {
     public static LiteralArgumentBuilder<CommandSourceStack> register() {
         return literal("message")
                 .then(argument("player", EntityArgument.player())
-                        .then(argument("ticks", IntegerArgumentType.integer(10, 100))
+                        .then(argument("ticks", IntegerArgumentType.integer(-150, 150))
                                 .then(argument("message", ComponentArgument.textComponent())
                                         .executes(ctx -> message(ctx.getSource(),
                                                 EntityArgument.getPlayer(ctx, "player"),
@@ -36,12 +37,16 @@ public class MessageCommand {
     }
 
     public static int message(CommandSourceStack source, ServerPlayer target, Component msg, int ticks) throws CommandSyntaxException {
+        if (source.getPlayer() != target && !source.hasPermission(Commands.LEVEL_GAMEMASTERS)) {
+            throw CommandUtil.NO_PERMISSION.create();
+        }
+
         int id = HelperTracker.INSTANCE.getHelperId(target.getUUID());
 
         Entity entity;
         if (id == 0) {
             // no helper right now, raise it
-            Vec3 spawnPos = target.getEyePosition().add(target.getLookAngle().normalize()).subtract(0.0, 0.5, 0.0);
+            Vec3 spawnPos = LittleHelperEntity.DEFAULT_POSITIONER.apply(target);
             entity = SummonCommand.createEntity(source, ModEntityTypes.LITTLE_HELPER.get().builtInRegistryHolder(), spawnPos, new CompoundTag(), false);
         } else {
             // helper is (or should be!) up
@@ -52,13 +57,8 @@ public class MessageCommand {
             if (helper.getOwner().isEmpty()) {
                 helper.setOwner(target);
             }
-            boolean ok = helper.addMessage(msg, ticks);
-            if (!ok) {
-                source.sendFailure(Component.literal("too many message queued for player, slow down!"));
-                return 0;
-            } else {
-                return 1;
-            }
+            boolean ok = ticks < 0 ? helper.addPriorityMessage(msg, -ticks) : helper.addMessage(msg, ticks);
+            return ok ? 1 : 0;
         } else {
             source.sendFailure(Component.literal("can't seem to get helper entity for target player!"));
             return 0;

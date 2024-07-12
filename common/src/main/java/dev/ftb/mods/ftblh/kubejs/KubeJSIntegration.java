@@ -1,5 +1,6 @@
 package dev.ftb.mods.ftblh.kubejs;
 
+import dev.ftb.mods.ftblh.LittleHelperBindings;
 import dev.latvian.mods.kubejs.KubeJSPlugin;
 import dev.latvian.mods.kubejs.script.BindingsEvent;
 

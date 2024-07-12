@@ -1,6 +1,7 @@
 package dev.ftb.mods.ftblh.entity;
 
 import dev.ftb.mods.ftblh.HelperTracker;
+import net.minecraft.ChatFormatting;
 import net.minecraft.commands.arguments.EntityAnchorArgument;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
@@ -26,6 +27,7 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.Optional;
+import java.util.function.Function;
 
 public class LittleHelperEntity extends Mob {
     private WeakReference<ServerPlayer> ownerRef;
@@ -36,12 +38,22 @@ public class LittleHelperEntity extends Mob {
     private boolean staysShown;
     private boolean dancing;
     private int moveCounter;
+    private boolean chatMessages = true;
 
     private static final int MSG_CHECK_NOW = 0;
     private static final int MSG_IDLE = -1;
 
+    public static final Function<Player,Vec3> DEFAULT_POSITIONER = player ->
+            player.getEyePosition().add(player.getLookAngle().normalize().scale(1.5)).subtract(0.0, 0.5, 0.0);
+
     public static final int DEFAULT_MSG_DISPLAY_TIME = 70;  // ticks
     private static final int MAX_MSG_QUEUE_SIZE = 16;
+
+    // determine where the helper should hover when idle (default: above and slightly behind player's right shoulder)
+    private Function<Player,Vec3> idlePositioner = player ->
+            player.getEyePosition().add(calculateViewVector(-20, player.getYHeadRot() + 90).normalize());
+    // determine where the helper should hover when it has message (default: in front of and slightly under the eyeline)
+    private Function<Player,Vec3> activePositioner = DEFAULT_POSITIONER;
 
     private static final EntityDataAccessor<TimedMessage> ACTIVE_MSG
             = SynchedEntityData.defineId(LittleHelperEntity.class, TimedMessage.SERIALIZER);
@@ -51,6 +63,7 @@ public class LittleHelperEntity extends Mob {
 
         moveControl = new LHMoveControl(this);
         noPhysics = true;
+        blocksBuilding = false;
         spinningAnimationTicks = 7f;
         setInvulnerable(true);
     }
@@ -82,6 +95,27 @@ public class LittleHelperEntity extends Mob {
     @Override
     public boolean isInvulnerableTo(DamageSource damageSource) {
         return damageSource != damageSources().genericKill();
+    }
+
+    @Override
+    public boolean isPickable() {
+        return false;
+    }
+
+    public void setActivePositioner(Function<Player, Vec3> activePositioner) {
+        this.activePositioner = activePositioner;
+    }
+
+    public void setIdlePositioner(Function<Player, Vec3> idlePositioner) {
+        this.idlePositioner = idlePositioner;
+    }
+
+    public boolean isChatMessages() {
+        return chatMessages;
+    }
+
+    public void setChatMessages(boolean chatMessages) {
+        this.chatMessages = chatMessages;
     }
 
     public Component getActiveMsg() {
@@ -158,7 +192,6 @@ public class LittleHelperEntity extends Mob {
     @Override
     public void onClientRemoval() {
         spawnAnim();
-//        level().addParticle(ParticleTypes.POOF, getX(), getY() + 0.2, getZ(), 0, 0, 0);
     }
 
     private void processMessageQueue() {
@@ -182,16 +215,45 @@ public class LittleHelperEntity extends Mob {
     }
 
     public boolean addMessage(Component message) {
-        return addMessage(message, DEFAULT_MSG_DISPLAY_TIME);
+        return addMessageInternal(message, DEFAULT_MSG_DISPLAY_TIME, false);
     }
 
     public boolean addMessage(Component message, int displayTicks) {
+        return addMessageInternal(message, displayTicks, false);
+    }
+
+    public boolean addPriorityMessage(Component message) {
+        return addMessageInternal(message, DEFAULT_MSG_DISPLAY_TIME, true);
+    }
+
+    public boolean addPriorityMessage(Component message, int displayTicks) {
+        return addMessageInternal(message, displayTicks, true);
+    }
+
+    private boolean addMessageInternal(Component message, int displayTicks, boolean queueJump) {
+        if (!messageQueue.isEmpty() && message.equals(messageQueue.peekLast().message)) {
+            // squash repeated messages which are still pending
+            return false;
+        }
+
+        if (chatMessages) {
+            getOwner().ifPresent(owner -> owner.displayClientMessage(Component.empty()
+                            .append(Component.literal("[Little Helper] ").withStyle(ChatFormatting.YELLOW))
+                            .append(message), false)
+            );
+        }
+
         if (messageQueue.size() >= MAX_MSG_QUEUE_SIZE) {
             return false;
         }
 
-        messageQueue.addLast(new TimedMessage(message, displayTicks));
-        if (messageTimer == MSG_IDLE) {
+        if (queueJump) {
+            messageQueue.addFirst(new TimedMessage(message, displayTicks));
+        } else {
+            messageQueue.addLast(new TimedMessage(message, displayTicks));
+        }
+
+        if (messageTimer == MSG_IDLE || queueJump) {
             messageTimer = MSG_CHECK_NOW;
         }
 
@@ -214,16 +276,12 @@ public class LittleHelperEntity extends Mob {
         return spinningAnimationTicks > 0;
     }
 
-    private Vec3 targetPosition(ServerPlayer owner) {
-        if (getActiveMsg().getContents() == ComponentContents.EMPTY) {
-            // no messages... hover slightly above and behind player's right shoulder
-            Vec3 offset = calculateViewVector(-20, owner.getYHeadRot() + 90).normalize();
-            return owner.getEyePosition().add(offset);
+    public Vec3 targetPosition(ServerPlayer owner) {
+        if (owner == null) return getPosition(0f); // shouldn't happen
 
-        } else {
-            // messages... hover in front of player
-            return owner.getEyePosition().add(owner.getLookAngle().normalize().scale(1.5d)).subtract(0, 0.5, 0);
-        }
+        return getActiveMsg().getContents() == ComponentContents.EMPTY ?
+                idlePositioner.apply(owner) :
+                activePositioner.apply(owner);
     }
 
     private void updatePosition(ServerPlayer owner) {
@@ -237,9 +295,19 @@ public class LittleHelperEntity extends Mob {
 
     @Override
     public void remove(RemovalReason removalReason) {
-        getOwner().ifPresent(player -> HelperTracker.INSTANCE.unregister(player.getUUID()));
+        getOwner().ifPresent(player -> {
+            if (player.isAlive()) {
+                // don't unregister if player died; we'll be respawning the helper when the player respawns
+                HelperTracker.INSTANCE.unregister(player.getUUID());
+            }
+        });
 
         super.remove(removalReason);
+    }
+
+    @Override
+    public boolean removeWhenFarAway(double d) {
+        return false;
     }
 
     private class LHMoveControl extends MoveControl {
@@ -260,6 +328,9 @@ public class LittleHelperEntity extends Mob {
                         moveCounter = Math.max(0, moveCounter - 1);
                     } else {
                         setDeltaMovement(getDeltaMovement().add(vec3.scale(this.speedModifier * 0.05D / d0)));
+                        if (getDeltaMovement().lengthSqr() > 8) {
+                            setDeltaMovement(getDeltaMovement().scale(0.5));
+                        }
                         if (getTarget() == null) {
                             Vec3 vec31 = getDeltaMovement();
                             setYRot(-((float) Mth.atan2(vec31.x, vec31.z)) * (180F / (float) Math.PI));
