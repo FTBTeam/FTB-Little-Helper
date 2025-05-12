@@ -7,7 +7,10 @@ import dev.ftb.mods.ftblh.LittleHelperBindings;
 import net.minecraft.network.FriendlyByteBuf;
 
 public class PacketToggleHelper extends BaseC2SMessage {
-    public PacketToggleHelper(FriendlyByteBuf buf) {
+    public PacketToggleHelper(FriendlyByteBuf ignoredBuf) {
+    }
+
+    public PacketToggleHelper() {
     }
 
     @Override

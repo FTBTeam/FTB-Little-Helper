@@ -79,6 +79,20 @@ public enum LittleHelperBindings {
                 () -> player.level().playSound(null, player.blockPosition(), sound, SoundSource.PLAYERS, volume, pitch));
     }
 
+    public void playPrivateSound(Player player, SoundEvent sound, float volume, float pitch) {
+        getHelperEntity(player).ifPresentOrElse(
+                lh -> lh.playSound(sound, volume, pitch),
+                () -> player.level().playSound(null, player.blockPosition(), sound, SoundSource.PLAYERS, volume, pitch));
+    }
+
+    public void queueSound(Player player, SoundEvent sound) {
+        queueSound(player, sound, 1f, 1f, 20);
+    }
+
+    public void queueSound(Player player, SoundEvent sound, float volume, float pitch, int ticks) {
+        getHelperEntity(player).ifPresent(lh -> lh.addSound(sound, volume, pitch, ticks, false));
+    }
+
     public Optional<LittleHelperEntity> getHelperEntity(Player player) {
         int id = HelperTracker.INSTANCE.getHelperId(player.getUUID());
         return id != 0 && player.level().getEntity(id) instanceof LittleHelperEntity lh ? Optional.of(lh) : Optional.empty();

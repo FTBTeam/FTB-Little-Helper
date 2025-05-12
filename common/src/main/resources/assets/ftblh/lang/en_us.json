@@ -1,6 +1,7 @@
 {
   "key.ftblh.toggle": "Toggle Helper",
   "key.categories.ftblh": "FTB Little Helper",
+  "ftblh.chat_prefix": "[Little Helper] ",
   "ftblh.message.hi": "Hi!",
   "ftblh.message.bye": "Bye!",
   "ftblh.message.death_sad": "Sorry :(",

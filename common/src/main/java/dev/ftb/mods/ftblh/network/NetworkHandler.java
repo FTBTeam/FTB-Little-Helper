@@ -1,6 +1,5 @@
 package dev.ftb.mods.ftblh.network;
 
-import dev.architectury.networking.NetworkManager;
 import dev.architectury.networking.simple.MessageType;
 import dev.architectury.networking.simple.SimpleNetworkManager;
 import dev.ftb.mods.ftblh.FTBLittleHelper;

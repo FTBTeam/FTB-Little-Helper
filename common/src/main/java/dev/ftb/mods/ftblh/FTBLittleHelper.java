@@ -78,7 +78,7 @@ public final class FTBLittleHelper {
         if (oldLevel != null && id != 0 && oldLevel.getEntity(id) instanceof LittleHelperEntity oldHelper) {
             oldHelper.discard();
             HelperTracker.INSTANCE.unregister(player.getUUID());
-            ShowCommand.createHelper(player.createCommandSourceStack(), player);
+            CommandUtil.recreateHelper(player.createCommandSourceStack(), player);
         }
     }
 
@@ -89,7 +89,7 @@ public final class FTBLittleHelper {
             // (if the player dies, little helper despawns if active, but player ID stays in the tracker)
             if (HelperTracker.INSTANCE.isRegistered(newPlayer.getUUID())) {
                 HelperTracker.INSTANCE.unregister(newPlayer.getUUID());
-                LittleHelperEntity helper = ShowCommand.createHelper(newPlayer.createCommandSourceStack(), newPlayer);
+                LittleHelperEntity helper = CommandUtil.recreateHelper(newPlayer.createCommandSourceStack(), newPlayer);
                 if (helper != null) {
                     helper.addMessage(Component.translatable("ftblh.message.death_sad").withStyle(ChatFormatting.GOLD));
                 }

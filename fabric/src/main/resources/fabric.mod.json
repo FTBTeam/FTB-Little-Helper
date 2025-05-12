@@ -19,7 +19,7 @@
       "dev.ftb.mods.ftblh.fabric.FTBLittleHelperFabric"
     ],
     "client": [
-      "dev.ftb.mods.ftblh.fabric.client.ExampleModFabricClient"
+      "dev.ftb.mods.ftblh.fabric.client.FTBLittleHelperFabricClient"
     ]
   },
   "mixins": [

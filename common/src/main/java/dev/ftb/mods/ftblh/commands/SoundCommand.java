@@ -4,33 +4,28 @@ import com.mojang.brigadier.Command;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
-import dev.ftb.mods.ftblh.HelperTracker;
-import dev.ftb.mods.ftblh.entity.LittleHelperEntity;
-import dev.ftb.mods.ftblh.registry.ModEntityTypes;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
-import net.minecraft.commands.arguments.ComponentArgument;
 import net.minecraft.commands.arguments.EntityArgument;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.chat.Component;
-import net.minecraft.server.commands.SummonCommand;
+import net.minecraft.commands.arguments.ResourceLocationArgument;
+import net.minecraft.commands.synchronization.SuggestionProviders;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.phys.Vec3;
 
 import static net.minecraft.commands.Commands.argument;
 import static net.minecraft.commands.Commands.literal;
 
-public class MessageCommand {
+public class SoundCommand {
     public static LiteralArgumentBuilder<CommandSourceStack> register() {
-        return literal("message")
+        return literal("sound")
                 .then(argument("player", EntityArgument.player())
                         .then(argument("ticks", IntegerArgumentType.integer(-150, 150))
-                                .then(argument("message", ComponentArgument.textComponent())
-                                        .executes(ctx -> message(ctx.getSource(),
+                                .then(argument("soundevent", ResourceLocationArgument.id())
+                                        .suggests(SuggestionProviders.AVAILABLE_SOUNDS)
+                                        .executes(ctx -> queueSound(ctx.getSource(),
                                                 EntityArgument.getPlayer(ctx, "player"),
-                                                ComponentArgument.getComponent(ctx, "message"),
+                                                ResourceLocationArgument.getId(ctx, "soundevent"),
                                                 IntegerArgumentType.getInteger(ctx, "ticks"))
                                         )
                                 )
@@ -38,11 +33,14 @@ public class MessageCommand {
                 );
     }
 
-    public static int message(CommandSourceStack source, ServerPlayer target, Component msg, int ticks) throws CommandSyntaxException {
-        CommandUtil.checkPermissions(source, target);
+    public static int queueSound(CommandSourceStack source, ServerPlayer target, ResourceLocation soundId, int ticks) throws CommandSyntaxException {
+        if (source.getPlayer() != target && !source.hasPermission(Commands.LEVEL_GAMEMASTERS)) {
+            throw CommandUtil.NO_PERMISSION.create();
+        }
 
         return CommandUtil.getLittleHelper(source, target).map(helper -> {
-            boolean ok = ticks < 0 ? helper.addPriorityMessage(msg, -ticks) : helper.addMessage(msg, ticks);
+            SoundEvent event = SoundEvent.createVariableRangeEvent(soundId);
+            boolean ok = ticks < 0 ? helper.addPrioritySound(event, -ticks) : helper.addSound(event, ticks);
             return ok ? Command.SINGLE_SUCCESS : 0;
         }).orElse(0);
     }

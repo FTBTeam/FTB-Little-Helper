@@ -1,15 +1,19 @@
 package dev.ftb.mods.ftblh.entity;
 
+import com.mojang.datafixers.util.Either;
 import dev.ftb.mods.ftblh.HelperTracker;
+import dev.ftb.mods.ftblh.SyncableSound;
+import dev.ftb.mods.ftblh.client.FTBLittleHelperClient;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.arguments.EntityAnchorArgument;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.ComponentContents;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializer;
 import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -83,12 +87,14 @@ public class LittleHelperEntity extends Mob {
     public void onSyncedDataUpdated(EntityDataAccessor<?> entityDataAccessor) {
         super.onSyncedDataUpdated(entityDataAccessor);
         if (entityDataAccessor.equals(ACTIVE_MSG)) {
-            if (entityData.get(ACTIVE_MSG).displayTicks > 0) {
+            TimedMessage msg = entityData.get(ACTIVE_MSG);
+            if (msg.displayTicks > 0) {
                 spinningAnimationTicks = 15f;
                 dancing = true;
             } else {
                 dancing = false;
             }
+            msg.onExecute(this, true);
         }
     }
 
@@ -120,7 +126,7 @@ public class LittleHelperEntity extends Mob {
 
     public Component getActiveMsg() {
         TimedMessage msg = entityData.get(ACTIVE_MSG);
-        return msg.displayTicks == 0 ? Component.empty() : msg.message;
+        return msg.displayTicks == 0 ? Component.empty() : msg.message.left().orElse(Component.empty());
     }
 
     public void setStaysShown(boolean staysShown) {
@@ -199,6 +205,7 @@ public class LittleHelperEntity extends Mob {
             if (!messageQueue.isEmpty()) {
                 TimedMessage msg = messageQueue.removeFirst();
                 entityData.set(ACTIVE_MSG, msg);
+                msg.onExecute(this, false);
                 messageTimer = msg.displayTicks;
                 moveCounter = 0;
             } else {
@@ -215,42 +222,50 @@ public class LittleHelperEntity extends Mob {
     }
 
     public boolean addMessage(Component message) {
-        return addMessageInternal(message, DEFAULT_MSG_DISPLAY_TIME, false);
+        return addTimedMessage(TimedMessage.ofComponent(message, DEFAULT_MSG_DISPLAY_TIME), false);
     }
 
     public boolean addMessage(Component message, int displayTicks) {
-        return addMessageInternal(message, displayTicks, false);
+        return addTimedMessage(TimedMessage.ofComponent(message, displayTicks), false);
     }
 
     public boolean addPriorityMessage(Component message) {
-        return addMessageInternal(message, DEFAULT_MSG_DISPLAY_TIME, true);
+        return addTimedMessage(TimedMessage.ofComponent(message, DEFAULT_MSG_DISPLAY_TIME), true);
     }
 
     public boolean addPriorityMessage(Component message, int displayTicks) {
-        return addMessageInternal(message, displayTicks, true);
+        return addTimedMessage(TimedMessage.ofComponent(message, displayTicks), true);
     }
 
-    private boolean addMessageInternal(Component message, int displayTicks, boolean queueJump) {
-        if (!messageQueue.isEmpty() && message.equals(messageQueue.peekLast().message)) {
-            // squash repeated messages which are still pending
-            return false;
-        }
+    public boolean addSound(SoundEvent sound) {
+        return addSound(sound, 1f, 1f, DEFAULT_MSG_DISPLAY_TIME, false);
+    }
 
-        if (chatMessages) {
-            getOwner().ifPresent(owner -> owner.displayClientMessage(Component.empty()
-                            .append(Component.literal("[Little Helper] ").withStyle(ChatFormatting.YELLOW))
-                            .append(message), false)
-            );
-        }
+    public boolean addSound(SoundEvent sound, int waitTicks) {
+        return addSound(sound, 1f, 1f, waitTicks, false);
+    }
 
-        if (messageQueue.size() >= MAX_MSG_QUEUE_SIZE) {
+    public boolean addPrioritySound(SoundEvent sound) {
+        return addSound(sound, 1f, 1f, DEFAULT_MSG_DISPLAY_TIME, true);
+    }
+
+    public boolean addPrioritySound(SoundEvent sound, int waitTicks) {
+        return addSound(sound, 1f, 1f, waitTicks, true);
+    }
+
+    public boolean addSound(SoundEvent sound, float volume, float pitch, int waitTicks, boolean queueJump) {
+        return addTimedMessage(TimedMessage.ofSound(sound, SoundSource.PLAYERS, volume, pitch, waitTicks), queueJump);
+    }
+
+    private boolean addTimedMessage(TimedMessage timedMessage, boolean queueJump) {
+        if (timedMessage.shouldSquash(this) || messageQueue.size() >= MAX_MSG_QUEUE_SIZE) {
             return false;
         }
 
         if (queueJump) {
-            messageQueue.addFirst(new TimedMessage(message, displayTicks));
+            messageQueue.addFirst(timedMessage);
         } else {
-            messageQueue.addLast(new TimedMessage(message, displayTicks));
+            messageQueue.addLast(timedMessage);
         }
 
         if (messageTimer == MSG_IDLE || queueJump) {
@@ -279,7 +294,7 @@ public class LittleHelperEntity extends Mob {
     public Vec3 targetPosition(ServerPlayer owner) {
         if (owner == null) return getPosition(0f); // shouldn't happen
 
-        return getActiveMsg().getContents() == ComponentContents.EMPTY ?
+        return messageQueue.isEmpty() && messageTimer == MSG_IDLE ? //getActiveMsg().getContents() == ComponentContents.EMPTY ?
                 idlePositioner.apply(owner) :
                 activePositioner.apply(owner);
     }
@@ -346,24 +361,66 @@ public class LittleHelperEntity extends Mob {
         }
     }
 
-    public record TimedMessage(Component message, int displayTicks) {
+    public record TimedMessage(Either<Component, SyncableSound> message, int displayTicks) {
         public static final EntityDataSerializer<TimedMessage> SERIALIZER = new EntityDataSerializer.ForValueType<>() {
             @Override
             public void write(FriendlyByteBuf buf, TimedMessage object) {
-                buf.writeComponent(object.message);
+                object.message.ifLeft(component -> {
+                    buf.writeBoolean(true);
+                    buf.writeComponent(component);
+                }).ifRight(sound -> {
+                    buf.writeBoolean(false);
+                    sound.toNetwork(buf);
+                });
                 buf.writeVarInt(object.displayTicks);
             }
 
             @Override
             public TimedMessage read(FriendlyByteBuf buf) {
-                return new TimedMessage(buf.readComponent(), buf.readVarInt());
+                boolean isComponent = buf.readBoolean();
+                return isComponent ?
+                        new TimedMessage(Either.left(buf.readComponent()), buf.readVarInt()) :
+                        new TimedMessage(Either.right(SyncableSound.fromNetwork(buf)), buf.readVarInt());
             }
 
             @Override
             public TimedMessage copy(TimedMessage object) {
-                return new TimedMessage(object.message.copy(), object.displayTicks);
+                return object.message.map(
+                        c -> new TimedMessage(Either.left(c.copy()), object.displayTicks),
+                        s -> new TimedMessage(Either.right(s), object.displayTicks)
+                );
             }
         };
-        public static final TimedMessage NONE = new TimedMessage(Component.empty(), 0);
+        public static final TimedMessage NONE = new TimedMessage(Either.left(Component.empty()), 0);
+
+        public static TimedMessage ofComponent(Component message, int displayTicks) {
+            return new TimedMessage(Either.left(message), displayTicks);
+        }
+
+        public static TimedMessage ofSound(SoundEvent soundEvent, SoundSource soundSource, float volume, float pitch, int displayTicks) {
+            return new TimedMessage(Either.right(new SyncableSound(soundEvent, soundSource, volume, pitch)), displayTicks);
+        }
+
+        public boolean shouldSquash(LittleHelperEntity lh) {
+            return message.map(
+                    c -> !lh.messageQueue.isEmpty() && lh.messageQueue.peekLast().message.equals(c),
+                    s -> false
+            );
+        }
+
+        public void onExecute(LittleHelperEntity lh, boolean isClient) {
+            message.ifLeft(component -> {
+                if (!isClient && lh.chatMessages) {
+                    lh.getOwner().ifPresent(owner -> owner.displayClientMessage(Component.empty()
+                            .append(Component.translatable("ftblh.chat_prefix").withStyle(ChatFormatting.YELLOW))
+                            .append(component), false)
+                    );
+                }
+            }).ifRight(sound -> {
+                if (isClient) {
+                    FTBLittleHelperClient.playSound(sound);
+                }
+            });
+        }
     }
 }
