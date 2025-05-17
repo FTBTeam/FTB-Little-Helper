@@ -3,7 +3,9 @@ package dev.ftb.mods.ftblh.forge;
 import dev.architectury.platform.forge.EventBuses;
 import dev.ftb.mods.ftblh.entity.LittleHelperEntity;
 import dev.ftb.mods.ftblh.registry.ModEntityTypes;
+import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.EntityAttributeCreationEvent;
+import net.minecraftforge.event.entity.EntityMountEvent;
 import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
@@ -25,6 +27,14 @@ public final class FTBLittleHelperForge {
         }
 
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::registerAttributes);
+
+        MinecraftForge.EVENT_BUS.addListener(this::onEntityMount);
+    }
+
+    private void onEntityMount(EntityMountEvent event) {
+        if (event.getEntityMounting() instanceof LittleHelperEntity) {
+            event.setCanceled(true);
+        }
     }
 
     private void registerAttributes(EntityAttributeCreationEvent event) {
