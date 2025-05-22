@@ -49,13 +49,16 @@ public class LittleHelperEntity extends Mob {
 
     public static final Function<Player,Vec3> DEFAULT_POSITIONER = player ->
             player.getEyePosition().add(player.getLookAngle().normalize().scale(1.5)).subtract(0.0, 0.5, 0.0);
+    public static final Function<Player, Vec3> IDLE_POSITIONER_RIGHT = player ->
+            player.getEyePosition().add(calcViewVector(-20, player.getYHeadRot() + 90).normalize());
+    public static final Function<Player, Vec3> IDLE_POSITIONER_LEFT = player ->
+            player.getEyePosition().add(calcViewVector(-20, player.getYHeadRot() - 90).normalize());
 
     public static final int DEFAULT_MSG_DISPLAY_TIME = 70;  // ticks
     private static final int MAX_MSG_QUEUE_SIZE = 16;
 
     // determine where the helper should hover when idle (default: above and slightly behind player's right shoulder)
-    private Function<Player,Vec3> idlePositioner = player ->
-            player.getEyePosition().add(calculateViewVector(-20, player.getYHeadRot() + 90).normalize());
+    private Function<Player,Vec3> idlePositioner = IDLE_POSITIONER_RIGHT;
     // determine where the helper should hover when it has message (default: in front of and slightly under the eyeline)
     private Function<Player,Vec3> activePositioner = DEFAULT_POSITIONER;
 
@@ -323,6 +326,13 @@ public class LittleHelperEntity extends Mob {
     @Override
     public boolean removeWhenFarAway(double d) {
         return false;
+    }
+
+    private static Vec3 calcViewVector(float xRot, float yRot) {
+        float xRad = xRot * Mth.DEG_TO_RAD;
+        float yRad = -yRot * Mth.DEG_TO_RAD;
+        float c = Mth.cos(xRad);
+        return new Vec3(Mth.sin(yRad) * c, -Mth.sin(xRad), Mth.cos(yRad) * c);
     }
 
     private class LHMoveControl extends MoveControl {

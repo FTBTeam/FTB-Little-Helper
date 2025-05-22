@@ -16,6 +16,7 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.player.Player;
@@ -95,5 +96,9 @@ public final class FTBLittleHelper {
                 }
             }
         }
+    }
+
+    public static ResourceLocation id(String name) {
+        return new ResourceLocation(FTBLittleHelper.MOD_ID, name);
     }
 }
