@@ -171,7 +171,7 @@ public class LittleHelperEntity extends Mob {
         if (!level().isClientSide) {
             getOwner().ifPresentOrElse(
                     owner -> {
-                        if (owner.isAlive()) {
+                        if (owner.isAlive() && HelperTracker.INSTANCE.validateHelper(owner, this)) {
                             updatePosition(owner);
                             processMessageQueue();
                         } else {
@@ -316,7 +316,7 @@ public class LittleHelperEntity extends Mob {
         getOwner().ifPresent(player -> {
             if (player.isAlive()) {
                 // don't unregister if player died; we'll be respawning the helper when the player respawns
-                HelperTracker.INSTANCE.unregister(player.getUUID());
+                HelperTracker.INSTANCE.unregister(player.getUUID(), this);
             }
         });
 

@@ -18,6 +18,12 @@ public enum HelperTracker {
         knownHelpers.removeInt(uuid);
     }
 
+    public void unregister(UUID uuid, LittleHelperEntity helper) {
+        if (helper.getId() == knownHelpers.getOrDefault(uuid, 0)) {
+            knownHelpers.removeInt(uuid);
+        }
+    }
+
     public void register(UUID uuid, int entityId) {
         knownHelpers.put(uuid, entityId);
     }
@@ -40,5 +46,9 @@ public enum HelperTracker {
            return Optional.of(lh);
        }
        return Optional.empty();
+    }
+
+    public boolean validateHelper(Player player, LittleHelperEntity helper) {
+        return getActiveHelper(player).map(lh -> lh.getId() == helper.getId()).orElse(false);
     }
 }

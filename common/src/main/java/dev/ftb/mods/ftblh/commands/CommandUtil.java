@@ -17,6 +17,7 @@ import net.minecraft.server.commands.SummonCommand;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.phys.Vec3;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Optional;
 
@@ -45,16 +46,17 @@ public class CommandUtil {
         Entity entity;
         if (id == 0) {
             // no helper right now, raise it
-            Vec3 spawnPos = LittleHelperEntity.DEFAULT_POSITIONER.apply(target);
-            entity = SummonCommand.createEntity(source, ModEntityTypes.LITTLE_HELPER.get().builtInRegistryHolder(), spawnPos, new CompoundTag(), false);
+            entity = createHelperForPlayer(source, target);
         } else {
             // helper is (or should be!) up
             entity = target.level().getEntity(id);
+            if (entity == null) {
+                // entity got lost somehow? create a new one (if previous helper became unloaded, it will be discarded next time it loads & ticks)
+                FTBLittleHelper.LOGGER.warn("helper entity id {} for player {} got lost? creating a new one", id, target.getUUID());
+                entity = createHelperForPlayer(source, target);
+            }
         }
         if (entity instanceof LittleHelperEntity lh && lh.isAlive()) {
-            if (lh.getOwner().isEmpty()) {
-                lh.setOwner(target);
-            }
             return Optional.of(lh);
         }
         source.sendFailure(Component.literal("can't seem to get helper entity for target player!"));
@@ -62,18 +64,26 @@ public class CommandUtil {
     }
 
     public static LittleHelperEntity recreateHelper(CommandSourceStack source, ServerPlayer target) {
-        // needed for players changing dimension, or dying
-        Vec3 spawnPos = LittleHelperEntity.DEFAULT_POSITIONER.apply(target);
+        // for players changing dimension, or dying
         try {
-            Entity entity = SummonCommand.createEntity(source, ModEntityTypes.LITTLE_HELPER.get().builtInRegistryHolder(), spawnPos, new CompoundTag(), false);
+            HelperTracker.INSTANCE.unregister(target.getUUID());
+            Entity entity = createHelperForPlayer(source, target);
             if (entity instanceof LittleHelperEntity helper) {
-                helper.setOwner(target);
-                helper.setStaysShown(true);
                 return helper;
             }
         } catch (CommandSyntaxException e) {
             return null;
         }
         return null;
+    }
+
+    private static @NotNull Entity createHelperForPlayer(CommandSourceStack source, ServerPlayer target) throws CommandSyntaxException {
+        Vec3 spawnPos = LittleHelperEntity.DEFAULT_POSITIONER.apply(target);
+        Entity e = SummonCommand.createEntity(source, ModEntityTypes.LITTLE_HELPER.get().builtInRegistryHolder(), spawnPos, new CompoundTag(), false);
+        if (e instanceof LittleHelperEntity helper) {
+            helper.setOwner(target);
+            helper.setStaysShown(true);
+        }
+        return e;
     }
 }

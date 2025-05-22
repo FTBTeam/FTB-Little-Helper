@@ -6,6 +6,7 @@ import dev.ftb.mods.ftblh.registry.ModEntityTypes;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.entity.EntityAttributeCreationEvent;
 import net.minecraftforge.event.entity.EntityMountEvent;
+import net.minecraftforge.event.entity.EntityTeleportEvent;
 import net.minecraftforge.eventbus.api.Event;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
@@ -29,6 +30,14 @@ public final class FTBLittleHelperForge {
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::registerAttributes);
 
         MinecraftForge.EVENT_BUS.addListener(this::onEntityMount);
+        MinecraftForge.EVENT_BUS.addListener(this::onEntityTeleport);
+    }
+
+    private void onEntityTeleport(EntityTeleportEvent.TeleportCommand event) {
+        if (event.getEntity() instanceof LittleHelperEntity) {
+            event.setCanceled(true);
+            FTBLittleHelper.LOGGER.debug("canceled teleportation command for little helper entity id {}", event.getEntity().getId());
+        }
     }
 
     private void onEntityMount(EntityMountEvent event) {
