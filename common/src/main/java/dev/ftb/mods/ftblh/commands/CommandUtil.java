@@ -31,6 +31,7 @@ public class CommandUtil {
                 .then(HideCommand.register())
                 .then(MessageCommand.register())
                 .then(SoundCommand.register())
+                .then(CommandCommand.register())
         );
     }
 

@@ -34,7 +34,7 @@ public class LittleHelperRenderer extends MobRenderer<LittleHelperEntity,LittleH
     public void render(LittleHelperEntity entity, float yaw, float partialTick, PoseStack poseStack, MultiBufferSource buffer, int light) {
         super.render(entity, yaw, partialTick, poseStack, buffer, light);
 
-        Component msg = entity.getActiveMsg();
+        Component msg = entity.getDisplayedMessage();
         if (msg.getContents() != ComponentContents.EMPTY) {
             renderActiveMessage(entity, msg, poseStack, buffer);
         }

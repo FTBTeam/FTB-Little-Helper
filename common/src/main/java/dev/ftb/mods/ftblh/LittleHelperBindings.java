@@ -93,6 +93,14 @@ public enum LittleHelperBindings {
         getHelperEntity(player).ifPresent(lh -> lh.addSound(sound, volume, pitch, ticks, false));
     }
 
+    public void queuePriorityCommand(Player player, String command, boolean silent, int ticks) {
+        getHelperEntity(player).ifPresent(lh -> lh.addPriorityCommand(command, silent, ticks));
+    }
+
+    public void queueCommand(Player player, String command, boolean silent, int ticks) {
+        getHelperEntity(player).ifPresent(lh -> lh.addCommand(command, silent, ticks));
+    }
+
     public Optional<LittleHelperEntity> getHelperEntity(Player player) {
         int id = HelperTracker.INSTANCE.getHelperId(player.getUUID());
         return id != 0 && player.level().getEntity(id) instanceof LittleHelperEntity lh ? Optional.of(lh) : Optional.empty();

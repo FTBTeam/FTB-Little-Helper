@@ -11,6 +11,7 @@ import dev.ftb.mods.ftblh.client.FTBLittleHelperClient;
 import dev.ftb.mods.ftblh.commands.CommandUtil;
 import dev.ftb.mods.ftblh.commands.ShowCommand;
 import dev.ftb.mods.ftblh.entity.LittleHelperEntity;
+import dev.ftb.mods.ftblh.entity.op.TimedOperation;
 import dev.ftb.mods.ftblh.registry.ModEntityTypes;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -38,7 +39,7 @@ public final class FTBLittleHelper {
 
         ModEntityTypes.register();
 
-        EntityDataSerializers.registerSerializer(LittleHelperEntity.TimedMessage.SERIALIZER);
+        EntityDataSerializers.registerSerializer(TimedOperation.SERIALIZER);
 
         EnvExecutor.runInEnv(Env.CLIENT, () -> FTBLittleHelperClient::init);
     }
