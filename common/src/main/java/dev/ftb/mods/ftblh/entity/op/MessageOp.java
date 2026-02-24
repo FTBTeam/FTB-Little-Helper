@@ -4,6 +4,7 @@ import dev.ftb.mods.ftblh.entity.LittleHelperEntity;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.ComponentContents;
 
 public record MessageOp(Component component) implements QueuedOperation {
     public static MessageOp fromNetwork(FriendlyByteBuf buf) {
@@ -12,7 +13,7 @@ public record MessageOp(Component component) implements QueuedOperation {
 
     @Override
     public void execute(LittleHelperEntity helper, boolean clientSide) {
-        if (!clientSide && helper.isChatMessages()) {
+        if (!clientSide && helper.isChatMessages() && component.getContents() != ComponentContents.EMPTY) {
             helper.getOwner().ifPresent(owner -> owner.displayClientMessage(Component.empty()
                     .append(Component.translatable("ftblh.chat_prefix").withStyle(ChatFormatting.YELLOW))
                     .append(component), false)

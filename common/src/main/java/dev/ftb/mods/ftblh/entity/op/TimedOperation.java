@@ -3,6 +3,7 @@ package dev.ftb.mods.ftblh.entity.op;
 import dev.ftb.mods.ftblh.entity.LittleHelperEntity;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.FormattedText;
 import net.minecraft.network.syncher.EntityDataSerializer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;

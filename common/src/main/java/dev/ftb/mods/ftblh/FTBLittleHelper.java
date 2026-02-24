@@ -51,7 +51,7 @@ public final class FTBLittleHelper {
     private static void onPlayerJoin(ServerPlayer player) {
         if (player.getServer() != null && PersistedHelpers.getInstance(player.getServer()).checkAndRemove(player)) {
             try {
-                ShowCommand.show(player.createCommandSourceStack(), player);
+                ShowCommand.show(player.createCommandSourceStack(), player, "");
             } catch (CommandSyntaxException e) {
                 FTBLittleHelper.LOGGER.warn("couldn't bring little helper up for player {}", player.getUUID());
             }

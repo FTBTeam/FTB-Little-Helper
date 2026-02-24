@@ -20,9 +20,13 @@ public enum LittleHelperBindings {
     INSTANCE;
 
     public void show(Player player) {
+        show(player, "");
+    }
+
+    public void show(Player player, String message) {
         if (player instanceof ServerPlayer sp) {
             try {
-                ShowCommand.show(player.createCommandSourceStack(), sp);
+                ShowCommand.show(player.createCommandSourceStack(), sp, message);
             } catch (CommandSyntaxException e) {
                 throw new RuntimeException(e);
             }
@@ -30,9 +34,13 @@ public enum LittleHelperBindings {
     }
 
     public void hide(Player player) {
+        hide(player, "");
+    }
+
+    public void hide(Player player, String message) {
         if (player instanceof ServerPlayer sp) {
             try {
-                HideCommand.hide(player.createCommandSourceStack(), sp);
+                HideCommand.hide(player.createCommandSourceStack(), sp, message);
             } catch (CommandSyntaxException e) {
                 throw new RuntimeException(e);
             }
@@ -40,10 +48,14 @@ public enum LittleHelperBindings {
     }
 
     public void toggle(Player player) {
+        toggle(player, "", "");
+    }
+
+    public void toggle(Player player, String showMsg, String hideMsg) {
         if (isActive(player)) {
-            hide(player);
+            hide(player, hideMsg);
         } else {
-            show(player);
+            show(player, showMsg);
         }
     }
 
