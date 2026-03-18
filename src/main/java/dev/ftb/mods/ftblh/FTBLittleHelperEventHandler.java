@@ -62,10 +62,7 @@ public final class FTBLittleHelperEventHandler {
             // when respawning after a death, recreate the helper if it was previously active
             // (if the player dies, little helper despawns if active, but player ID stays in the tracker)
             if (HelperTracker.INSTANCE.isRegistered(sp.getUUID())) {
-                LittleHelperEntity helper = CommandUtil.recreateHelper(sp.createCommandSourceStack(), sp);
-                if (helper != null) {
-                    helper.addMessage(Component.translatable("ftblh.message.death_sad").withStyle(ChatFormatting.GOLD));
-                }
+                CommandUtil.recreateHelper(sp.createCommandSourceStack(), sp);
             }
         }
     }
