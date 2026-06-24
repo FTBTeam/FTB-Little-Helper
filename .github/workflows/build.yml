@@ -16,7 +16,7 @@ jobs:
       !contains(github.event.head_commit.message, '[ciskip]')
     uses: FTBTeam/mods-meta/.github/workflows/standard-release.yml@main
     with:
-      curse-publish-task: ""
+      curse-publish-task: "publishMods"
       maven-snapshots: true
     secrets:
       ftb-maven-token: ${{ secrets.FTB_MAVEN_TOKEN }}
