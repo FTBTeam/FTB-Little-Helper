@@ -85,7 +85,8 @@ public class LittleHelperEntity extends Mob {
     @Override
     public void onSyncedDataUpdated(EntityDataAccessor<?> entityDataAccessor) {
         super.onSyncedDataUpdated(entityDataAccessor);
-        if (entityDataAccessor.equals(ACTIVE_MSG)) {
+
+        if (entityDataAccessor.equals(ACTIVE_MSG) && level().isClientSide()) {
             TimedOperation msg = entityData.get(ACTIVE_MSG);
             if (msg.duration() > 0) {
                 spinningAnimationTicks = 15f;
